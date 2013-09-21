@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
 
+my $VERSION = 0.03;
+
 =head1 NAME
 
 dbdump.pl - database remote backup application
@@ -89,15 +91,21 @@ sub process {
 }
 
 sub load_config {
-    my $configs;
+    my %configs;
     my $settings = dirname($0) . '/dbdump.ini';
+
+    if(!-f $settings) {
+        _log("ERROR: No settings file [$settings] found. Please consult documentation (perldoc $0) for more information.");
+        die;
+    }
+
     my $c = Config::IniFiles->new( -file => $settings );
 	unless(defined $c) {
         _log("ERROR: Unable to load settings file [$settings]");
         die;
     }
 
-    for my $sect ($->Sections()) {
+    for my $sect ($c->Sections()) {
         for my $name ($c->Parameters($sect)) {
             my @value = $c->val($sect,$name);
             next    unless(@value);
@@ -178,8 +186,9 @@ Miss Barbell Productions, L<http://www.missbarbell.co.uk/>
 
   Copyright (C) 2007 Barbie for Miss Barbell Productions
 
-  This module is free software; you can redistribute it and/or 
-  modify it under the same terms as Perl itself.
+  This software is released as free software; such that you can redistribute
+  it and/or modify it under the terms as the Artistic License v2.0, a copy 
+  of which is included with this distribution.
 
 =head1 DISCLAIMER OF WARRANTY
 

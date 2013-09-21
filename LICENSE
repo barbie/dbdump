@@ -2,9 +2,6 @@ LICENSE FOR dbdump
 
 Copyright © 2007 Barbie for Miss Barbell Productions.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-The full text of the licenses can be found in the Artistic file included with
-this distribution, or in perlartistic file available with your Perl 
-installation.
+This software is released as free software; such that you can redistribute
+it and/or modify it under the terms as the Artistic License v2.0, a copy 
+of which is included with this distribution.

@@ -1,7 +1,7 @@
 use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'			=> 'dbdump',
-    'VERSION'	    => '0.02',
+    'VERSION'	    => '0.03',
     'PREREQ_PM'		=> {
 		'Config::IniFiles'	=> 0,
 		'IO::File'	        => 0,

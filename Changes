@@ -1,5 +1,10 @@
 # Changes log for dbdump
 
+0.03    08/08/2007
+	- added VERSION to the script.
+	- fixed a couple of configuration loading bugs.
+	- Changed to Artistic License v2.0.
+
 0.02    12/07/2007
 	- redesign of the configuration into a separate file.
 
