@@ -118,22 +118,48 @@ sub process {
         push @files, $archive
     }
 
-    return  unless(@servers);
-
-    unless(@files) {
-        _log("WARN: no files processed to transfer to other servers]");
-        return;
-    }
-
-    # now to SCP to the remote servers
-    for my $server (@servers) {
-        if(my $scp = Net::SCP->new( $cfg->{$server}{ip}, $cfg->{$server}{user} )) {
-            for my $source (@files) {
-                $scp->mkdir(dirname($source));
-                $scp->put($source,$source) or _log($scp->{errstr});
+    if(@servers) {
+        if(@files) {
+            # now to SCP to the remote servers
+            for my $server (@servers) {
+                if(my $scp = Net::SCP->new( $cfg->{$server}{ip}, $cfg->{$server}{user} )) {
+                    for my $source (@files) {
+                        $scp->mkdir(dirname($source));
+                        $scp->put($source,$source) or _log($scp->{errstr});
+                    }
+                } else {
+                    _log("ERROR: Unable to connect to server [$cfg->{$server}{ip}]");
+                }
             }
         } else {
-            _log("ERROR: Unable to connect to server [$cfg->{$server}{ip}]");
+            _log("WARN: no files processed to transfer to other servers]");
+        }
+    }
+
+    if($cfg->{LOCAL}{days} && $cfg->{LOCAL}{days} > 0) {
+        my $ext = join( '|', map { $compress{$_}->{ext} } keys %compress );
+        $ext =~ s/\./\\./g;
+
+        # now clean up
+        my %files;
+        @files = File::Find::Rule->file->name( qr/\.sql($ext)?$/)->in('backups');
+        for my $file (sort @files) {
+            if(-z $file && !$cfg->{LOCAL}{zero}) {
+                unlink $file; # zero bytes;
+            } else {
+                # store per site
+                my ($db) = $file =~ m!.*/(\w+)-\d+\.sql(?:$ext)$!;
+                if($db) { unshift @{ $files{$db} }, $file; }
+            }
+        }
+
+        for my $db (sort keys %files) {
+            next if(@{$files{$db}} <= $cfg->{LOCAL}{days});
+
+            splice(@{$files{$db}},0,$cfg->{LOCAL}{days});
+            for my $file (sort @{$files{$db}}) {
+                unlink $file;
+            }
         }
     }
 }
@@ -215,6 +241,18 @@ The script runs using a configuration file residing in the same directory as
 the program, and named 'dbdump.ini'. The file should consist of three types of
 sections.
 
+=head2 File Name & Location
+
+The configuration file name can be 'dbdump.ini' or '.dbdump.ini', and should be
+stored in one of the following locations:
+
+  * ./<file name>
+  * <directory of .pl file>/<file name>
+  * ~/<file name>
+
+Precedence is as above. If you have multiple files in different locations, the
+first found be the one that is used.
+
 =head2 Local Section
 
 The Local section is mandatory and should include the entries DBUSER and VHOST.
@@ -227,53 +265,16 @@ directory and local filestore will reside. An example of this section is below:
   VHOST=/var/www/
   fmt=mysql
   compress=gzip
+  files=28
+  zero=0
 
-=head2 Servers Section
+=head2 Clean Up
 
-The Servers section indicates the servers you wish to copy the recently created
-backup files to. You are expected to have set up the appropriate SSH keys and 
-copied your public key to the server(s) you are copying to. You may have as 
-many server entries as you wish, and the application will copy the backup files
-to each. An example of this section is below: 
+If 'files' is provided in the LOCAL section, this will be used to remove files
+per site, keeping at most the number of files specified. 
 
-  [SERVERS]
-  SERVER1=1
-
-  [SERVER1]
-  ip=127.0.0.1
-  user=username
-
-The 'SERVERS' section must list the servers you wish to access. These can then
-selectively enabled or disabled by setting to 1 or 0 respectively. Only those
-servers listed and enabled in the SERVERS section will be processed.
-
-=head2 Sites Section
-
-The sites which you require backing up, are all listed in the Sites section.
-Each site is listed with its directory path, database name and the type of 
-database currently used to store the content of the site. Note that only mysql
-(mysql) and postgresql (pg) are support at the moment. An example of this 
-section is below: 
-
-  [SITES]
-  SITE1=1
-  SITE2=0
-
-  [SITE1]
-  path=/var/www/site1
-  db=site1
-  fmt=mysql
-  compress=zip
-
-  [SITE2]
-  path=/var/www/site2
-  db=site2
-  fmt=pg
-
-As per the SERVERS section, the SITES section must list the sites you wish to
-back up. These can then selectively enabled or disabled by setting to 1 or 0 
-respectively. Only those sites listed and enabled in the SITES section will be
-processed.
+Note that zero size files are automatically removed, unless the 'zero' field
+is set to a positive value in the LOCAL section.
 
 =head2 Database Formats
 
@@ -323,17 +324,52 @@ part of the string is blank, the format is ignored.
 The '%s' indicates the file name to be compressed. If this is also missing, or
 more than one exists, the format will be ignored.
 
-=head2 File Name & Location
+=head2 Servers Section
 
-The configuration file name can be 'dbdump.ini' or '.dbdump.ini', and should be
-stored in one of the following locations:
+The Servers section indicates the servers you wish to copy the recently created
+backup files to. You are expected to have set up the appropriate SSH keys and 
+copied your public key to the server(s) you are copying to. You may have as 
+many server entries as you wish, and the application will copy the backup files
+to each. An example of this section is below: 
 
-  * ./<file name>
-  * <directory of .pl file>/<file name>
-  * ~/<file name>
+  [SERVERS]
+  SERVER1=1
 
-Precedence is as above. If you have multiple files in different locations, the
-first found be the one that is used.
+  [SERVER1]
+  ip=127.0.0.1
+  user=username
+
+The 'SERVERS' section must list the servers you wish to access. These can then
+selectively enabled or disabled by setting to 1 or 0 respectively. Only those
+servers listed and enabled in the SERVERS section will be processed.
+
+=head2 Sites Section
+
+The sites which you require backing up, are all listed in the Sites section.
+Each site is listed with its directory path, database name and the type of 
+database currently used to store the content of the site. Note that only mysql
+(mysql) and postgresql (pg) are support at the moment. An example of this 
+section is below: 
+
+  [SITES]
+  SITE1=1
+  SITE2=0
+
+  [SITE1]
+  path=/var/www/site1
+  db=site1
+  fmt=mysql
+  compress=zip
+
+  [SITE2]
+  path=/var/www/site2
+  db=site2
+  fmt=pg
+
+As per the SERVERS section, the SITES section must list the sites you wish to
+back up. These can then selectively enabled or disabled by setting to 1 or 0 
+respectively. Only those sites listed and enabled in the SITES section will be
+processed.
 
 =head1 AUTHOR
 
