@@ -50,9 +50,10 @@ process();
 sub process {
     chdir($cfg->{LOCAL}{VHOST});
 
-    my @sit
-    my @files;
-    for my $site (grep {/^SITE/} keys %$cfg) {
+    my @sites   = grep { $cfg->{SITES}{$_}   } keys %{ $cfg->{SITES}   };
+    my @servers = grep { $cfg->{SERVERS}{$_} } keys %{ $cfg->{SERVERS} };
+
+    for my $site (@sites) {
         next    unless(-d $cfg->{$site}{path});
 
         if(!$formats{$cfg->{$site}{fmt}}) {
@@ -76,7 +77,7 @@ sub process {
     }
 
     # now to SCP to the remote servers
-    for my $server (grep {/^SERVER/} keys %$cfg) {
+    for my $server (@servers) {
         if(my $scp = Net::SCP->new( $cfg->{$server}{ip}, $cfg->{$server}{user} )) {
             for my $source (@files) {
                 $scp->mkdir(dirname($source));
@@ -164,9 +165,16 @@ copied your public key to the server(s) you are copying to. You may have as
 many server entries as you wish, and the application will copy the backup files
 to each. An example of this section is below: 
 
+  [SERVERS]
+  SERVER1=1
+
   [SERVER1]
   ip=127.0.0.1
   user=username
+
+The 'SERVERS' section must list the servers you wish to access. These can then
+selectively enabled or disabled by setting to 1 or 0 respectively. Only those
+servers listed and enabled in the SERVERS section will be processed.
 
 =head2 Sites Section
 
@@ -175,6 +183,10 @@ Each site is listed with its directory path, database name and the type of
 database currently used to store the content of the site. Note that only mysql
 (mysql) and postgresql (pg) are support at the moment. An example of this 
 section is below: 
+
+  [SITES]
+  SITE1=1
+  SITE2=0
 
   [SITE1]
   path=/var/www/site1
@@ -185,6 +197,11 @@ section is below:
   path=/var/www/site2
   db=site2
   fmt=pg
+
+As per the SERVERS section, the SITES section must list the sites you wish to
+back up. These can then selectively enabled or disabled by setting to 1 or 0 
+respectively. Only those sites listed and enabled in the SITES section will be
+processed.
 
 =head2 File Name & Location
 
