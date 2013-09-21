@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                     dbdump
-version:                  0.03
+version:                  0.04
 abstract:                 A database remote backup application
 author:
   - Barbie <barbie@cpan.org>
@@ -19,7 +19,7 @@ requires:
 provides:
   dbdump:
     file:     dbdump.pl
-    version:  0.03
+    version:  0.04
 
 resources:
   license:    http://www.perlfoundation.org/artistic_license_2_0

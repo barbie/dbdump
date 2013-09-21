@@ -1,6 +1,7 @@
 Changes log for dbdump
 ======================
 
+0.04    2013-09-21
         - change file dates changed to meet W3CDTF standards.
         - expanded config file name and location possibilities.
         - config can more actively enable/disable sites and servers.

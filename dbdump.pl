@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 
-my $VERSION = 0.03;
+my $VERSION = 0.04;
 
 =head1 NAME
 
