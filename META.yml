@@ -5,8 +5,8 @@ abstract:                 A database remote backup application
 author:
   - Barbie <barbie@cpan.org>
 
-license:                  perl
-distribution_type:        module
+license:                  artistic_2
+distribution_type:        script
 installdirs:              site
 
 requires:
@@ -22,7 +22,7 @@ provides:
     version:  0.03
 
 resources:
-  license:    http://dev.perl.org/licenses/
+  license:    http://www.perlfoundation.org/artistic_license_2_0
 
 meta-spec:
    version:   1.3
