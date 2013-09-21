@@ -176,6 +176,26 @@ sub load_config {
         }
 	}
 
+    if($configs{FORMATS}) {
+        for my $fmt (keys %{$configs{FORMATS}}) {
+            $formats{$fmt} = $configs{FORMATS}{$fmt};
+        }
+        delete $configs{FORMATS};
+    }
+
+    if($configs{COMPRESS}) {
+        for my $fmt (keys %{$configs{COMPRESS}}) {
+            my ($ext,$cmd) = split('|',$configs{COMPRESS}{$fmt});
+            next    unless($ext && $cmd);
+            my @parts = split('%s',$cmd);
+            next    unless(@parts == 2);
+
+            $compress{$fmt}{ext} = $ext; 
+            $compress{$fmt}{cmd} = $cmd; 
+        }
+        delete $configs{FORMATS};
+    }
+
     return \%configs;
 }
 
@@ -264,6 +284,21 @@ installed the appropriate binaries for your system.
 Database dump formats can be specified in the LOCAL section, and will apply to
 all sites, unless a format is explicitly specified in the site section.
 
+You can also add your own Database Formats, or override exsiting ones, by
+adding a FORMATS section:
+
+  [FORMATS]
+  mysql=mysqldump -u %s --add-drop-table %s >%s
+  pg=pg_dump -S %s %s -f %s -i -x -O -R
+
+Note that the '%s' are significant, and currently must be in the order of:
+
+  1) user name with access to database
+  2) database name
+  3) output file
+
+These may be made more configurable in the future.
+
 =head2 Compression Formats
 
 There are currently three compression formats, 'gzip', 'zip' and 'compress'. 
@@ -272,6 +307,21 @@ ensure you have installed the appropriate binaries for your system.
 
 Compression formats can be specified in the LOCAL section, and will apply to
 all sites, unless a format is explicitly specified in the site section.
+
+You can also add your own Compression Formats, or override exsiting ones, by
+adding a COMPRESS section:
+
+  [COMPRESS]
+  gzip=.gz|gzip %s
+  zip=.zip|zip %s
+  compress=.Z|compress %s
+
+The format of the assignment string is significant, and consist of the 
+resulting file extension and the command used, separated by a '|'. If either
+part of the string is blank, the format is ignored. 
+
+The '%s' indicates the file name to be compressed. If this is also missing, or
+more than one exists, the format will be ignored.
 
 =head2 File Name & Location
 

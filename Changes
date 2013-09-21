@@ -7,6 +7,7 @@ Changes log for dbdump
         - allow different compression formats.
         - extended documentation.
         - Database and Compression formats can be specified in LOCAL.
+        - allow use to specifiy own Database and Compression formats.
 
 0.03    2007-08-08
         - added VERSION to the script.
