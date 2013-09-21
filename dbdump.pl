@@ -17,8 +17,6 @@ From a configuration file, the application will attempt to dump the contents
 of the database for each virtual host to a file. The file is then compressed
 and if listed, copied to backup directories on the remote servers.
 
-Copyright (C) 2007 Barbie for Miss Barbell Productions.
-
 =cut
 
 # -------------------------------------
@@ -91,8 +89,19 @@ sub process {
 }
 
 sub load_config {
-    my %configs;
-    my $settings = dirname($0) . '/dbdump.ini';
+    my (%configs,$settings);
+
+    # find config file
+    for my $dir ('.', dirname($0), '~') {
+        for my $ini ('.dbdump.ini','dbdump.ini') {
+            my $file = "$dir/$ini";
+            next    unless(-f $file);
+
+            $settings = $file;
+            last;
+        }
+        last    if($settings);
+    }
 
     if(!-f $settings) {
         _log("ERROR: No settings file [$settings] found. Please consult documentation (perldoc $0) for more information.");
@@ -177,6 +186,18 @@ section is below:
   db=site2
   fmt=pg
 
+=head2 File Name & Location
+
+The configuration file name can be 'dbdump.ini' or '.dbdump.ini', and should be
+stored in one of the following locations:
+
+  * ./<file name>
+  * <directory of .pl file>/<file name>
+  * ~/<file name>
+
+Precedence is as above. If you have multiple files in different locations, the
+first found be the one that is used.
+
 =head1 AUTHOR
 
 Barbie, <barbie@missbarbell.co.uk> for
@@ -184,7 +205,7 @@ Miss Barbell Productions, L<http://www.missbarbell.co.uk/>
 
 =head1 COPYRIGHT & LICENCE
 
-  Copyright (C) 2007 Barbie for Miss Barbell Productions
+  Copyright (C) 2007-2013 Barbie for Miss Barbell Productions
 
   This software is released as free software; such that you can redistribute
   it and/or modify it under the terms as the Artistic License v2.0, a copy 
