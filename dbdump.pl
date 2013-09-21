@@ -141,7 +141,7 @@ sections.
 The Local section is mandatory and should include the entries DBUSER and VHOST.
 The DBUSER should be the user set up to access the database via localhost
 without requiring a password. VHOST is the base directory where the backups 
-directory and local filestore wil reside. An example of this section is below: 
+directory and local filestore will reside. An example of this section is below: 
 
   [LOCAL]
   DBUSER=dbuser
