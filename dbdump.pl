@@ -64,12 +64,14 @@ sub process {
     for my $site (@sites) {
         next    unless(-d $cfg->{$site}{path});
 
-        if(!$formats{ $cfg->{$site}{fmt} }) {
+        my $fmt = $cfg->{$site}{fmt} || $cfg->{LOCAL}{fmt};
+        unless($fmt && $formats{$fmt}) {
             _log("WARNING: unknown db format [$cfg->{$site}{fmt}] for $site, skipping site");
             next;
         }
 
-        if($cfg->{$site}{compress} && !$compress{ $cfg->{$site}{compress} }) {
+        my $zip = $cfg->{$site}{compress} || $cfg->{LOCAL}{compress};
+        if($zip && !$compress{$zip}) {
             _log("WARNING: unknown compression format [$cfg->{$site}{compress}] for $site, skipping site");
             next;
         }
@@ -77,12 +79,14 @@ sub process {
         my $db   = $cfg->{$site}{db};
         my @dt   = localtime(time);
         my $sql  = sprintf $fmt_file, $dt[5]+1900, $dt[4]+1, $db, $dt[5]+1900, $dt[4]+1, $dt[3];
-        my $cmd1 = sprintf $formats{$cfg->{$site}{fmt}}, $DBUSER, $db, $sql;
-        my $cmd2 = sprintf $compress{$cfg->{$site}{compress}}->{cmd}, $sql;
+        my $cmd1 = sprintf $formats{$fmt}, $DBUSER, $db, $sql;
         mkpath(dirname($sql));
 
-        my $archive;
-        $archive = $sql . $compress{ $cfg->{$site}{compress} }->{ext}   if($cfg->{$site}{compress});
+        my ($archive,$cmd2);
+        if($zip) {
+            $archive = $sql . $compress{ $zip }->{ext};
+            $cmd2 = sprintf $compress{$zip}->{cmd}, $sql;
+        }
 
         if(-f $sql) {
             _log("WARNING: file [$sql] exists, will not overwrite, skipping site")
@@ -201,6 +205,8 @@ directory and local filestore will reside. An example of this section is below:
   [LOCAL]
   DBUSER=dbuser
   VHOST=/var/www/
+  fmt=mysql
+  compress=gzip
 
 =head2 Servers Section
 
@@ -237,7 +243,7 @@ section is below:
   path=/var/www/site1
   db=site1
   fmt=mysql
-  compress=gzip
+  compress=zip
 
   [SITE2]
   path=/var/www/site2
@@ -255,11 +261,17 @@ There are currently two database dump formats, 'mysql' and 'pg'. More may be
 added in the future. Note these use system commands, so please ensure you have 
 installed the appropriate binaries for your system.
 
+Database dump formats can be specified in the LOCAL section, and will apply to
+all sites, unless a format is explicitly specified in the site section.
+
 =head2 Compression Formats
 
 There are currently three compression formats, 'gzip', 'zip' and 'compress'. 
 More may be added in the future. Note these use system commands, so please
 ensure you have installed the appropriate binaries for your system.
+
+Compression formats can be specified in the LOCAL section, and will apply to
+all sites, unless a format is explicitly specified in the site section.
 
 =head2 File Name & Location
 

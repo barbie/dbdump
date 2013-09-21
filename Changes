@@ -6,6 +6,7 @@ Changes log for dbdump
         - config can more actively enable/disable sites and servers.
         - allow different compression formats.
         - extended documentation.
+        - Database and Compression formats can be specified in LOCAL.
 
 0.03    2007-08-08
         - added VERSION to the script.
