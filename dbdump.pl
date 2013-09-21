@@ -32,9 +32,16 @@ use Net::SCP;
 # Variables
 
 my $fmt_file  = 'backups/%04d/%02d/%s-%04d%02d%02d.sql';
+
 my %formats = (
-    'mysql' => 'mysqldump -u %s --add-drop-table %s >%s;gzip %s',
-    'pg'    => 'pg_dump -S %s %s -f %s -i -x -O -R;gzip %s',
+    'mysql' => 'mysqldump -u %s --add-drop-table %s >%s',
+    'pg'    => 'pg_dump -S %s %s -f %s -i -x -O -R'
+);
+
+my %compress = (
+    'gzip'      => { cmd => 'gzip %s',     ext => '.gz'  }
+    'zip'       => { cmd => 'zip %s',      ext => '.zip' }
+    'compress'  => { cmd => 'compress %s', ext => '.Z'  }
 );
 
 
@@ -50,30 +57,68 @@ process();
 sub process {
     chdir($cfg->{LOCAL}{VHOST});
 
+    my @files;
     my @sites   = grep { $cfg->{SITES}{$_}   } keys %{ $cfg->{SITES}   };
     my @servers = grep { $cfg->{SERVERS}{$_} } keys %{ $cfg->{SERVERS} };
 
     for my $site (@sites) {
         next    unless(-d $cfg->{$site}{path});
 
-        if(!$formats{$cfg->{$site}{fmt}}) {
-            _log("WARNING: unknown db format [$cfg->{$site}{fmt}] for $site, ignoring");
+        if(!$formats{ $cfg->{$site}{fmt} }) {
+            _log("WARNING: unknown db format [$cfg->{$site}{fmt}] for $site, skipping site");
             next;
         }
 
-        my $db  = $cfg->{$site}{db};
-        my @dt  = localtime(time);
-        my $sql = sprintf $fmt_file, $dt[5]+1900, $dt[4]+1, $db, $dt[5]+1900, $dt[4]+1, $dt[3];
-        my $cmd = sprintf $formats{$cfg->{$site}{fmt}}, $DBUSER, $db, $sql, $sql;
+        if($cfg->{$site}{compress} && !$compress{ $cfg->{$site}{compress} }) {
+            _log("WARNING: unknown compression format [$cfg->{$site}{compress}] for $site, skipping site");
+            next;
+        }
+
+        my $db   = $cfg->{$site}{db};
+        my @dt   = localtime(time);
+        my $sql  = sprintf $fmt_file, $dt[5]+1900, $dt[4]+1, $db, $dt[5]+1900, $dt[4]+1, $dt[3];
+        my $cmd1 = sprintf $formats{$cfg->{$site}{fmt}}, $DBUSER, $db, $sql;
+        my $cmd2 = sprintf $compress{$cfg->{$site}{compress}}->{cmd}, $sql;
         mkpath(dirname($sql));
 
-        if(-f $sql)         { _log("WARNING: file [$sql] exists, will not overwrite")    }
-        elsif(-f "$sql.gz") { _log("WARNING: file [$sql.gz] exists, will not overwrite") }
-        else {
-            my $res = `$cmd`;
-            if($res) { _log("ERROR: res=[$res], cmd=[$cmd]") }
-            else     { push @files, "$sql.gz" }
+        my $archive;
+        $archive = $sql . $compress{ $cfg->{$site}{compress} }->{ext}   if($cfg->{$site}{compress});
+
+        if(-f $sql) {
+            _log("WARNING: file [$sql] exists, will not overwrite, skipping site")
+            next;
+        } elsif($archive && - $archive) {
+            _log("WARNING: file [$archive] exists, will not overwrite, skipping site") }
+            next;
         }
+
+        # create database dump file
+        my $res = `$cmd1`;
+        if($res) { 
+            _log("ERROR: res=[$res], cmd=[$cmd1]");
+            next;
+        }
+
+        unless($archive) {
+            push @files, $sql;
+            next;
+        }
+
+        # compress resulting file
+        my $res = `$cmd2`;
+        if($res) { 
+            _log("ERROR: res=[$res], cmd=[$cmd2]");
+            next;
+        }
+
+        push @files, $archive
+    }
+
+    return  unless(@servers);
+
+    unless(@files) {
+        _log("WARN: no files processed to transfer to other servers]");
+        return;
     }
 
     # now to SCP to the remote servers
@@ -81,7 +126,7 @@ sub process {
         if(my $scp = Net::SCP->new( $cfg->{$server}{ip}, $cfg->{$server}{user} )) {
             for my $source (@files) {
                 $scp->mkdir(dirname($source));
-                $scp->put($_,$_) or _log($scp->{errstr});
+                $scp->put($source,$source) or _log($scp->{errstr});
             }
         } else {
             _log("ERROR: Unable to connect to server [$cfg->{$server}{ip}]");
@@ -192,6 +237,7 @@ section is below:
   path=/var/www/site1
   db=site1
   fmt=mysql
+  compress=gzip
 
   [SITE2]
   path=/var/www/site2
@@ -202,6 +248,18 @@ As per the SERVERS section, the SITES section must list the sites you wish to
 back up. These can then selectively enabled or disabled by setting to 1 or 0 
 respectively. Only those sites listed and enabled in the SITES section will be
 processed.
+
+=head2 Database Formats
+
+There are currently two database dump formats, 'mysql' and 'pg'. More may be
+added in the future. Note these use system commands, so please ensure you have 
+installed the appropriate binaries for your system.
+
+=head2 Compression Formats
+
+There are currently three compression formats, 'gzip', 'zip' and 'compress'. 
+More may be added in the future. Note these use system commands, so please
+ensure you have installed the appropriate binaries for your system.
 
 =head2 File Name & Location
 

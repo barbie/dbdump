@@ -4,6 +4,8 @@ Changes log for dbdump
         - change file dates changed to meet W3CDTF standards.
         - expanded config file name and location possibilities.
         - config can more actively enable/disable sites and servers.
+        - allow different compression formats.
+        - extended documentation.
 
 0.03    2007-08-08
         - added VERSION to the script.
