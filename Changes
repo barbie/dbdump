@@ -1,0 +1,7 @@
+# Changes log for dbdump
+
+0.02    12/07/2007
+	- redesign of the configuration into a separate file.
+
+0.01    27/02/2007
+        - Initial release.

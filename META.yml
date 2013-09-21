@@ -1,0 +1,30 @@
+--- #YAML:1.0
+name:                     dbdump
+version:                  0.02
+abstract:                 A database remote backup application
+author:
+  - Barbie <barbie@cpan.org>
+
+license:                  perl
+distribution_type:        module
+installdirs:              site
+
+requires:
+  Config::IniFiles:       0
+	IO::File:               0
+	File::Path:             0
+	File::Basename:         0
+	Net::SCP:               0
+
+provides:
+  dbdump:
+    file:     dbdump.pl
+    version:  0.02
+
+resources:
+  license:    http://dev.perl.org/licenses/
+
+meta-spec:
+   version:   1.3
+   url:       http://module-build.sourceforge.net/META-spec-v1.3.html
+generated_by: Hand 1.0
