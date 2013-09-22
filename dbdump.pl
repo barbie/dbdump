@@ -23,9 +23,11 @@ and if listed, copied to backup directories on the remote servers.
 # Library Modules
 
 use Config::IniFiles;
+use Getopt::Long;
 use IO::File;
 use File::Path;
 use File::Basename;
+use File::Find::Rule;
 use Net::SCP;
 
 # -------------------------------------
@@ -44,6 +46,7 @@ my %compress = (
     'compress'  => { cmd => 'compress %s', ext => '.Z'  }
 );
 
+my %options;
 
 # -------------------------------------
 # Main Process
@@ -55,6 +58,8 @@ process();
 # Functions
 
 sub process {
+    _log("INFO: START") if($options{verbose});
+
     chdir($cfg->{LOCAL}{VHOST});
 
     my @files;
@@ -63,6 +68,14 @@ sub process {
 
     for my $site (@sites) {
         next    unless(-d $cfg->{$site}{path});
+
+        _log("INFO: processing site '$site'")   if($options{verbose});
+
+        my $dbuser = $cfg->{$site}{dbuser} || $cfg->{LOCAL}{DBUSER};
+        unless($dbuser) {
+            _log("WARNING: no database user for $site specified, skipping site");
+            next;
+        }
 
         my $fmt = $cfg->{$site}{fmt} || $cfg->{LOCAL}{fmt};
         unless($fmt && $formats{$fmt}) {
@@ -79,13 +92,27 @@ sub process {
         my $db   = $cfg->{$site}{db};
         my @dt   = localtime(time);
         my $sql  = sprintf $fmt_file, $dt[5]+1900, $dt[4]+1, $db, $dt[5]+1900, $dt[4]+1, $dt[3];
-        my $cmd1 = sprintf $formats{$fmt}, $DBUSER, $db, $sql;
+        my $cmd1 = sprintf $formats{$fmt}, $dbuser, $db, $sql;
         mkpath(dirname($sql));
+
+        if($options{verbose}) {
+            _log("INFO: fmt    = $fmt");
+            _log("INFO: zip    = $zip");
+            _log("INFO: dbuser = $dbuser");
+            _log("INFO: db     = $db");
+            _log("INFO: sql    = $sql");
+            _log("INFO: cmd1   = $cmd1");
+        }
 
         my ($archive,$cmd2);
         if($zip) {
             $archive = $sql . $compress{ $zip }->{ext};
             $cmd2 = sprintf $compress{$zip}->{cmd}, $sql;
+
+            if($options{verbose}) {
+                _log("INFO: archive = $archive");
+                _log("INFO: cmd2    = $cmd2");
+            }
         }
 
         if(-f $sql) {
@@ -103,6 +130,8 @@ sub process {
             next;
         }
 
+        _log("INFO: created sql dump")  if($options{verbose});
+
         unless($archive) {
             push @files, $sql;
             next;
@@ -115,6 +144,8 @@ sub process {
             next;
         }
 
+        _log("INFO: created archive")   if($options{verbose});
+
         push @files, $archive
     }
 
@@ -122,8 +153,10 @@ sub process {
         if(@files) {
             # now to SCP to the remote servers
             for my $server (@servers) {
+                _log("INFO: copying to server '$server'")   if($options{verbose});
                 if(my $scp = Net::SCP->new( $cfg->{$server}{ip}, $cfg->{$server}{user} )) {
                     for my $source (@files) {
+                        _log("INFO: copying file '$source'")    if($options{verbose});
                         $scp->mkdir(dirname($source));
                         $scp->put($source,$source) or _log($scp->{errstr});
                     }
@@ -136,15 +169,18 @@ sub process {
         }
     }
 
-    if($cfg->{LOCAL}{days} && $cfg->{LOCAL}{days} > 0) {
+    if($cfg->{LOCAL}{files} && $cfg->{LOCAL}{files} > 0) {
         my $ext = join( '|', map { $compress{$_}->{ext} } keys %compress );
         $ext =~ s/\./\\./g;
+
+        _log("INFO: reducing files to $cfg->{LOCAL}{files} per site")   if($options{verbose});
 
         # now clean up
         my %files;
         @files = File::Find::Rule->file->name( qr/\.sql($ext)?$/)->in('backups');
         for my $file (sort @files) {
             if(-z $file && !$cfg->{LOCAL}{zero}) {
+                _log("INFO: removing file '$file' (zero bytes)")    if($options{verbose});
                 unlink $file; # zero bytes;
             } else {
                 # store per site
@@ -154,29 +190,38 @@ sub process {
         }
 
         for my $db (sort keys %files) {
-            next if(@{$files{$db}} <= $cfg->{LOCAL}{days});
+            next if(@{$files{$db}} <= $cfg->{LOCAL}{files});
 
-            splice(@{$files{$db}},0,$cfg->{LOCAL}{days});
+            splice(@{$files{$db}},0,$cfg->{LOCAL}{files});
             for my $file (sort @{$files{$db}}) {
+                _log("INFO: removing file '$file'") if($options{verbose});
                 unlink $file;
             }
         }
     }
+
+    _log("INFO: STOP")  if($options{verbose});
 }
 
 sub load_config {
     my (%configs,$settings);
 
-    # find config file
-    for my $dir ('.', dirname($0), '~') {
-        for my $ini ('.dbdump.ini','dbdump.ini') {
-            my $file = "$dir/$ini";
-            next    unless(-f $file);
+    GetOptions(\%options, 'verbose', 'config=s');
 
-            $settings = $file;
-            last;
+    if($options{config}) {
+        $settings = $options{config}    if($options{config});
+    } else {
+        # find config file
+        for my $dir ('.', dirname($0), '~') {
+            for my $ini ('.dbdump.ini','dbdump.ini') {
+                my $file = "$dir/$ini";
+                next    unless(-f $file);
+
+                $settings = $file;
+                last;
+            }
+            last    if($settings);
         }
-        last    if($settings);
     }
 
     if(!-f $settings) {
@@ -235,6 +280,31 @@ sub _log {
 
 __END__
 
+=head1 COMMAND LINE OPTIONS
+
+=head2 Configuration File
+
+If you want to provide a configuration file from an alternative location, you
+can do so by providing this on the command line as follows:
+
+  perl dbdump.pl --config=/path/to/my/config.file
+
+  # or
+
+  perl dbdump.pl -c /path/to/my/config.file
+
+=head2 Verbose Mode
+
+Usually used for debugging purposes, you can enable the script to run in
+verbose mode, which will provide slightly noiser logging messages. This can be
+enabled on the command line as:
+
+  perl dbdump.pl --verbose
+
+  # or
+
+  perl dbdump.pl -v
+  
 =head1 CONFIGURATION
 
 The script runs using a configuration file residing in the same directory as 
@@ -365,11 +435,15 @@ section is below:
   path=/var/www/site2
   db=site2
   fmt=pg
+  dbuser=someoneelse
 
 As per the SERVERS section, the SITES section must list the sites you wish to
 back up. These can then selectively enabled or disabled by setting to 1 or 0 
 respectively. Only those sites listed and enabled in the SITES section will be
 processed.
+
+Note that the 'dbuser' will override the DBUSER specified in the LOCAL section,
+if included in the respective site seciton.
 
 =head1 AUTHOR
 
