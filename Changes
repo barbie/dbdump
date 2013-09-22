@@ -1,6 +1,7 @@
 Changes log for dbdump
 ======================
 
+0.05    2013-09-22
         - dbuser per site overrides DBUSER in LOCAL.
         - added command line option to specify config file.
         - added command line option to enable verbose logging.
