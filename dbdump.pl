@@ -278,7 +278,7 @@ sub _log {
     my $msg = shift;
 
     my @dt = localtime(time);
-    my $dt = sprintf "%04d-%02-%02dT%02d:%02d:%02d", $dt[5]+1900, $dt[4]+1, $dt[3], $dt[2], $dt[1], $dt[0];
+    my $dt = sprintf "%04d-%02d-%02dT%02d:%02d:%02d", $dt[5]+1900, $dt[4]+1, $dt[3], $dt[2], $dt[1], $dt[0];
 
     my $fh = IO::File->new('>>backups/dbdump.log')	or die "Cannot write to file [backups/dbdump.log]: $!\n";
 	print $fh "$dt $msg\n";
