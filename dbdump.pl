@@ -269,7 +269,7 @@ sub load_config {
         delete $configs{FORMATS};
     }
 
-    $options{force} = $configs{LOCAL}{force};
+    $options{force} ||= $configs{LOCAL}{force};
 
     return \%configs;
 }
