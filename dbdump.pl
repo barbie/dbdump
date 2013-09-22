@@ -39,8 +39,8 @@ my %formats = (
 );
 
 my %compress = (
-    'gzip'      => { cmd => 'gzip %s',     ext => '.gz'  }
-    'zip'       => { cmd => 'zip %s',      ext => '.zip' }
+    'gzip'      => { cmd => 'gzip %s',     ext => '.gz'  },
+    'zip'       => { cmd => 'zip %s',      ext => '.zip' },
     'compress'  => { cmd => 'compress %s', ext => '.Z'  }
 );
 
@@ -89,10 +89,10 @@ sub process {
         }
 
         if(-f $sql) {
-            _log("WARNING: file [$sql] exists, will not overwrite, skipping site")
+            _log("WARNING: file [$sql] exists, will not overwrite, skipping site");
             next;
         } elsif($archive && - $archive) {
-            _log("WARNING: file [$archive] exists, will not overwrite, skipping site") }
+            _log("WARNING: file [$archive] exists, will not overwrite, skipping site");
             next;
         }
 
@@ -109,7 +109,7 @@ sub process {
         }
 
         # compress resulting file
-        my $res = `$cmd2`;
+        $res = `$cmd2`;
         if($res) { 
             _log("ERROR: res=[$res], cmd=[$cmd2]");
             next;
