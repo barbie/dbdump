@@ -96,12 +96,12 @@ sub process {
         mkpath(dirname($sql));
 
         if($options{verbose}) {
-            _log("INFO: fmt    = $fmt");
-            _log("INFO: zip    = $zip");
-            _log("INFO: dbuser = $dbuser");
-            _log("INFO: db     = $db");
-            _log("INFO: sql    = $sql");
-            _log("INFO: cmd1   = $cmd1");
+            _log("INFO: fmt     = $fmt");
+            _log("INFO: zip     = $zip");
+            _log("INFO: dbuser  = $dbuser");
+            _log("INFO: db      = $db");
+            _log("INFO: sql     = $sql");
+            _log("INFO: cmd1    = $cmd1");
         }
 
         my ($archive,$cmd2);
@@ -115,19 +115,21 @@ sub process {
             }
         }
 
-        if(-f $sql) {
-            _log("WARNING: file [$sql] exists, will not overwrite, skipping site");
-            next;
-        } elsif($archive && - $archive) {
-            _log("WARNING: file [$archive] exists, will not overwrite, skipping site");
+        if($archive && -f $archive) {
+            _log("WARNING: file [$archive] exists, will not overwrite");
+            push @files, $archive;
             next;
         }
 
-        # create database dump file
-        my $res = `$cmd1`;
-        if($res) { 
-            _log("ERROR: res=[$res], cmd=[$cmd1]");
-            next;
+        if(-f $sql) {
+            _log("WARNING: file [$sql] exists, will not overwrite");
+        } else {
+            # create database dump file
+            my $res = `$cmd1`;
+            if($res) { 
+                _log("ERROR: res=[$res], cmd=[$cmd1]");
+                next;
+            }
         }
 
         _log("INFO: created sql dump")  if($options{verbose});
@@ -138,7 +140,7 @@ sub process {
         }
 
         # compress resulting file
-        $res = `$cmd2`;
+        my $res = `$cmd2`;
         if($res) { 
             _log("ERROR: res=[$res], cmd=[$cmd2]");
             next;
@@ -146,7 +148,7 @@ sub process {
 
         _log("INFO: created archive")   if($options{verbose});
 
-        push @files, $archive
+        push @files, $archive;
     }
 
     if(@servers) {
@@ -273,8 +275,11 @@ sub load_config {
 sub _log {
     my $msg = shift;
 
+    my @dt = localtime(time);
+    my $dt = sprintf "%04d-%02-%02dT%02d:%02d:%02d", $dt[5]+1900, $dt[4]+1, $dt[3], $dt[2], $dt[1], $dt[0];
+
     my $fh = IO::File->new('>>backups/dbdump.log')	or die "Cannot write to file [backups/dbdump.log]: $!\n";
-	print $fh "$msg\n";
+	print $fh "$dt $msg\n";
     $fh->close;
 }
 

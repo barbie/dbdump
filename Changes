@@ -5,6 +5,8 @@ Changes log for dbdump
         - added command line option to specify config file.
         - added command line option to enable verbose logging.
         - updated prerequisites.
+        - fixed logic error for skipping sql and archive files.
+        - added time stamp to log output.
 
 0.04    2013-09-21
         - change file dates changed to meet W3CDTF standards.
