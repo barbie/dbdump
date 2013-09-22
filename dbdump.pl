@@ -115,13 +115,13 @@ sub process {
             }
         }
 
-        if($archive && -f $archive) {
+        if($archive && -f $archive && !$options{force}) {
             _log("WARNING: file [$archive] exists, will not overwrite");
             push @files, $archive;
             next;
         }
 
-        if(-f $sql) {
+        if(-f $sql && !$options{force}) {
             _log("WARNING: file [$sql] exists, will not overwrite");
         } else {
             # create database dump file
@@ -208,7 +208,7 @@ sub process {
 sub load_config {
     my (%configs,$settings);
 
-    GetOptions(\%options, 'verbose', 'config=s');
+    GetOptions(\%options, 'verbose', 'config=s', 'force');
 
     if($options{config}) {
         $settings = $options{config}    if($options{config});
@@ -269,6 +269,8 @@ sub load_config {
         delete $configs{FORMATS};
     }
 
+    $options{force} = $configs{LOCAL}{force};
+
     return \%configs;
 }
 
@@ -310,6 +312,20 @@ enabled on the command line as:
 
   perl dbdump.pl -v
   
+=head2 Force Mode
+
+Normally SQL and archive files will not be recreated and overwrite existing 
+files. However, adding the 'force' option will ensure that both files are
+recreated. This can be enabled on the command line as:
+
+  perl dbdump.pl --force
+
+  # or
+
+  perl dbdump.pl -f
+
+Note that this can also be enabled in the configuration file.
+  
 =head1 CONFIGURATION
 
 The script runs using a configuration file residing in the same directory as 
@@ -342,6 +358,10 @@ directory and local filestore will reside. An example of this section is below:
   compress=gzip
   files=28
   zero=0
+  force=0
+
+The 'force' option, if set to a true value, will ensure SQL and archive files
+are recreated if they already exist.
 
 =head2 Clean Up
 
